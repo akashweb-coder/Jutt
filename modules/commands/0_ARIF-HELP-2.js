@@ -1,77 +1,156 @@
-const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
-
 module.exports.config = {
   name: "help2",
-  version: "1.0.3",
+  version: "1.0.4",
   hasPermssion: 0,
   credits: "ARIF BABU",
-  description: "Shows bot commands page 2",
+  description: "Image based help (ALL commands, Y-Style Box)",
   usePrefix: true,
   commandCategory: "BOT-COMMAND-LIST",
-  usages: "help2",
-  cooldowns: 5
+  usages: "[category]",
+  cooldowns: 5,
+  dependencies: {
+    "canvas": "",
+    "fs-extra": ""
+  }
 };
 
-module.exports.run = async function ({ api, event }) {
-  const { threadID } = event;
-  const prefix = global.config.PREFIX;
+module.exports.run = async function ({ api, event, args }) {
+  const { commands } = global.client;
+  const { threadID, messageID } = event;
 
-  /* 🖼️ IMGUR LINKS */
-  const imgurLinks = [
-    "https://i.imgur.com/i1BgQhz.png",
-    "https://i.imgur.com/iTskEvb.png",
-    "https://i.imgur.com/AJkpAle.png",
-    "https://i.imgur.com/i7Ngm0f.png",
-    "https://i.imgur.com/gyxhVCh.png",
-    "https://i.imgur.com/nLh8oLe.png"
-  ];
+  const fs = require("fs-extra");
+  const { createCanvas } = require("canvas");
 
-  const randomImg = imgurLinks[Math.floor(Math.random() * imgurLinks.length)];
-  const imgPath = path.join(__dirname, "cache", "help2.png");
+  /* ================= CACHE ================= */
+  const cacheDir = __dirname + "/cache";
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-  // download image
-  await axios({
-    url: randomImg,
-    method: "GET",
-    responseType: "stream"
-  }).then(res => {
-    res.data.pipe(fs.createWriteStream(imgPath));
-  });
+  const threadSetting = global.data.threadData.get(threadID) || {};
+  const prefix = threadSetting.PREFIX || global.config.PREFIX;
 
-  const page2Commands = [
-    "𒁍 kick → Remove member (Admin)",
-    "𒁍 ban → Ban member (Admin)",
-    "𒁍 setprefix → Change bot prefix",
-    "𒁍 clear → Clear messages",
-    "𒁍 mute → Mute member (Admin)",
-    "𒁍 unmute → Unmute member (Admin)",
-    "𒁍 warn → Warn member",
-    "𒁍 delwarn → Remove warning"
-  ];
+  /* ================= CATEGORY MAP (NO FILTER) ================= */
+  const categories = {};
+  for (const [name, cmd] of commands) {
+    let cate = cmd.config.commandCategory;
 
-  let msg = `┏━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
-  msg += `┃ ✧═══❁ ♥️ ARIF-BABU BOT ♥️ ❁═══✧ ┃\n`;
-  msg += `┃                            ┃\n`;
-  msg += `┃ 𒁍 Help Page 2             ┃\n`;
-  msg += `┃                            ┃\n`;
+    if (!cate || typeof cate !== "string") cate = "OTHER";
+    cate = cate.toUpperCase();
 
-  page2Commands.forEach(cmd => {
-    let line = cmd.length > 26 ? cmd.slice(0, 23) + "..." : cmd;
-    msg += `┃ ${line.padEnd(26, " ")} ┃\n`;
-  });
+    if (!categories[cate]) categories[cate] = [];
+    categories[cate].push(name);
+  }
 
-  msg += `┃                            ┃\n`;
-  msg += `┃ Use "${prefix}help" for page 1 ┃\n`;
-  msg += `┗━━━━━━━━━━━━━━━━━━━━━━━━┛`;
+  /* ================= CANVAS ================= */
+  const width = 900;
+  const height = 1000;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+
+  // BACKGROUND
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(0, 0, width, height);
+
+  /* ================= HEADER BOX ================= */
+  ctx.strokeStyle = "#38bdf8";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(30, 20, 840, 120);
+
+  ctx.fillStyle = "#e5e7eb";
+  ctx.font = "bold 30px Arial";
+  ctx.fillText("📜 HELP2 – ALL COMMAND LIST", 220, 70);
+
+  ctx.font = "22px Arial";
+  ctx.fillText(`Prefix: ${prefix}`, 60, 115);
+
+  /* ================= MAIN BOX ================= */
+  ctx.strokeStyle = "#22c55e";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(30, 160, 840, 760);
+
+  let y = 210;
+
+  /* ================= SINGLE CATEGORY ================= */
+  if (args[0]) {
+    const cateName = args.join(" ").toUpperCase();
+    const findCate = Object.keys(categories).find(c => c === cateName);
+
+    if (!findCate) {
+      return api.sendMessage(
+        `❌ Category "${args.join(" ")}" nahi mili!\nUse: ${prefix}help2i`,
+        threadID,
+        messageID
+      );
+    }
+
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText(`┏━━ CATEGORY: ${findCate} ━━┓`, 60, y);
+    y += 50;
+
+    ctx.fillStyle = "#f8fafc";
+    ctx.font = "24px Arial";
+
+    for (const cmd of categories[findCate]) {
+      ctx.fillText(`• ${prefix}${cmd}`, 80, y);
+      y += 34;
+      if (y >= height - 120) break;
+    }
+
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 26px Arial";
+    ctx.fillText("┗━━━━━━━━━━━━━━━━━━━━━━┛", 60, y + 20);
+  }
+
+  /* ================= ALL CATEGORIES ================= */
+  else {
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText("┏━━ CATEGORIES ━━┓", 60, y);
+    y += 50;
+
+    ctx.fillStyle = "#f8fafc";
+    ctx.font = "26px Arial";
+
+    for (const cate of Object.keys(categories)) {
+      ctx.fillText(
+        `• ${cate} (${categories[cate].length})`,
+        80,
+        y
+      );
+      y += 38;
+      if (y >= height - 140) break;
+    }
+
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 26px Arial";
+    ctx.fillText("┗━━━━━━━━━━━━━━━━━━━━━━┛", 60, y + 10);
+
+    ctx.fillStyle = "#e5e7eb";
+    ctx.font = "22px Arial";
+    ctx.fillText(
+      `Use: ${prefix}help2i <category>`,
+      80,
+      y + 50
+    );
+  }
+
+  /* ================= FOOTER ================= */
+  ctx.fillStyle = "#a855f7";
+  ctx.font = "20px Arial";
+  ctx.fillText(
+    "BOT BY MR ARIF BABU 💜",
+    300,
+    height - 30
+  );
+
+  /* ================= SAVE & SEND ================= */
+  const path = cacheDir + "/help2.png";
+  fs.writeFileSync(path, canvas.toBuffer());
 
   return api.sendMessage(
-    {
-      body: msg,
-      attachment: fs.createReadStream(imgPath)
-    },
+    { attachment: fs.createReadStream(path) },
     threadID,
-    () => fs.unlinkSync(imgPath)
+    () => fs.unlinkSync(path),
+    messageID
   );
 };
