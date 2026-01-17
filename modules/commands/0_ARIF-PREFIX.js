@@ -21,7 +21,7 @@ module.exports.handleEvent = async ({ event, api }) => {
     global.data.threadData.get(parseInt(threadID)) || {};
   const prefix = threadSetting.PREFIX || global.config.PREFIX;
 
-  // 🇮🇳 INDIA DATE & TIME
+  // 🇵🇰 PAKISTAN DATE & TIME
   const now = new Date();
 
   const time = now.toLocaleTimeString("en-IN", {
@@ -55,7 +55,7 @@ module.exports.handleEvent = async ({ event, api }) => {
 ✰ DAY ➪ ${day}
 
 ༺══─────────══༻
-MADE BY ❤️‍🔥 ARIF BABU
+MADE BY ❤️‍🔥 ⟶͇̽𝘼𝙆𝘼𝙎𝙃-𝙅𝙐𝙏𝙏⎯꯭̽
 `;
 
   return api.sendMessage(msg, threadID, messageID);
@@ -66,7 +66,7 @@ module.exports.run = async ({ event, api }) => {
     global.data.threadData.get(parseInt(event.threadID)) || {};
   const prefix = threadSetting.PREFIX || global.config.PREFIX;
 
-  // 🇮🇳 INDIA DATE & TIME
+  // 🇵🇰 PAKISTAN DATE & TIME
   const now = new Date();
 
   const time = now.toLocaleTimeString("en-IN", {
@@ -100,7 +100,7 @@ module.exports.run = async ({ event, api }) => {
 ✰ DAY ➪ ${day}
 
 ༺══─────────══༻
-MADE BY ❤️‍🔥 ARIF BABU
+MADE BY ❤️‍🔥 ⟶͇̽𝘼𝙆𝘼𝙎𝙃-𝙅𝙐𝙏𝙏⎯꯭̽
 `;
 
   return api.sendMessage(msg, event.threadID);
