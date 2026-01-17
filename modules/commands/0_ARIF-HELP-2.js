@@ -1,83 +1,77 @@
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
+
 module.exports.config = {
   name: "help2",
-  version: "1.0.2",
+  version: "1.0.3",
   hasPermssion: 0,
   credits: "ARIF BABU",
-  description: "THIS BOT IS MR ARIF BABU",
+  description: "Shows bot commands page 2",
   usePrefix: true,
-  commandCategory: "BOT-ALL-COMMAND-NAME",
-  usages: "HELP-2",
-  cooldowns: 1,
-  envConfig: {
-    autoUnsend: true,
-    delayUnsend: 300
-  }
+  commandCategory: "BOT-COMMAND-LIST",
+  usages: "help2",
+  cooldowns: 5
 };
 
-module.exports.languages = {
-  "en": {
-    "moduleInfo": "「 %1 」\n%2\n\n❯ Usage: %3\n❯ Category: %4\n❯ Waiting time: %5 seconds(s)\n❯ Permission: %6\n\n» Module code by %7 «",
-    "helpList": '[ There are %1 commands on this bot, Use: "%2help nameCommand" to know how to use! ]',
-    "user": "User",
-        "adminGroup": "Admin group",
-        "adminBot": "Admin bot"
-  }
-};
+module.exports.run = async function ({ api, event }) {
+  const { threadID } = event;
+  const prefix = global.config.PREFIX;
 
-module.exports.handleEvent = function ({ api, event, getText }) {
-  const { commands } = global.client;
-  const { threadID, messageID, body } = event;
+  /* 🖼️ IMGUR LINKS */
+  const imgurLinks = [
+    "https://i.imgur.com/i1BgQhz.png",
+    "https://i.imgur.com/iTskEvb.png",
+    "https://i.imgur.com/AJkpAle.png",
+    "https://i.imgur.com/i7Ngm0f.png",
+    "https://i.imgur.com/gyxhVCh.png",
+    "https://i.imgur.com/nLh8oLe.png"
+  ];
 
-  if (!body || typeof body == "undefined" || body.indexOf("help") != 0) return;
-  const splitBody = body.slice(body.indexOf("help")).trim().split(/\s+/);
-  if (splitBody.length == 1 || !commands.has(splitBody[1].toLowerCase())) return;
-  const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
-  const command = commands.get(splitBody[1].toLowerCase());
-  const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
-  return api.sendMessage(getText("moduleInfo", command.config.name, command.config.description, `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`, command.config.commandCategory, command.config.cooldowns, ((command.config.hasPermssion == 0) ? getText("user") : (command.config.hasPermssion == 1) ? getText("adminGroup") : getText("adminBot")), command.config.credits), threadID, messageID);
-}
+  const randomImg = imgurLinks[Math.floor(Math.random() * imgurLinks.length)];
+  const imgPath = path.join(__dirname, "cache", "help2.png");
 
-module.exports. run = function({ api, event, args, getText }) {
-  const { commands } = global.client;
-  const { threadID, messageID } = event;
-  const command = commands.get((args[0] || "").toLowerCase());
-  const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
-  const { autoUnsend, delayUnsend } = global.configModule[this.config.name];
-  const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
+  // download image
+  await axios({
+    url: randomImg,
+    method: "GET",
+    responseType: "stream"
+  }).then(res => {
+    res.data.pipe(fs.createWriteStream(imgPath));
+  });
 
-  if (!command) {
-    const arrayInfo = [];
-    const page = parseInt(args[0]) || 1;
-    const numberOfOnePage = 9999;
+  const page2Commands = [
+    "𒁍 kick → Remove member (Admin)",
+    "𒁍 ban → Ban member (Admin)",
+    "𒁍 setprefix → Change bot prefix",
+    "𒁍 clear → Clear messages",
+    "𒁍 mute → Mute member (Admin)",
+    "𒁍 unmute → Unmute member (Admin)",
+    "𒁍 warn → Warn member",
+    "𒁍 delwarn → Remove warning"
+  ];
 
-    let i = 0;
-    let msg = "";
+  let msg = `┏━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+  msg += `┃ ✧═══❁ ♥️ ARIF-BABU BOT ♥️ ❁═══✧ ┃\n`;
+  msg += `┃                            ┃\n`;
+  msg += `┃ 𒁍 Help Page 2             ┃\n`;
+  msg += `┃                            ┃\n`;
 
-    for (var [name, value] of (commands)) {
-      name += ``;
-      arrayInfo.push(name);
-    }
+  page2Commands.forEach(cmd => {
+    let line = cmd.length > 26 ? cmd.slice(0, 23) + "..." : cmd;
+    msg += `┃ ${line.padEnd(26, " ")} ┃\n`;
+  });
 
-    arrayInfo.sort((a, b) => a.data - b.data);
+  msg += `┃                            ┃\n`;
+  msg += `┃ Use "${prefix}help" for page 1 ┃\n`;
+  msg += `┗━━━━━━━━━━━━━━━━━━━━━━━━┛`;
 
-    const startSlice = numberOfOnePage*page - numberOfOnePage;
-    i = startSlice;
-    const returnArray = arrayInfo.slice(startSlice, startSlice + numberOfOnePage);
-
-    for (let item of returnArray) msg += `𒁍  [${++i}] → ${prefix}${item} ♥️ \n`;
-
-
-    const siu = `┏━━━━━┓\n    ARIF-BABU                    ✧═══•❁😛❁•═══✧\n┗━━━━━┛\n\n\n✧═══❁♥️TOTAL COMMAND LIST ♥️❁═══✧`;
-
- const text = `PAGE 𒁍  [ ${page}/${Math.ceil(arrayInfo.length/numberOfOnePage)} ]\n\nOR COMMAND KE LIYE HAI MENU TYPE KRO\nTHIS BOT IS MADE BYE MR ARIF BABU 🙂✌️\n\n\n\n❁ ═════ ❃ARIF-BABU❃ ═════ ❁`;
-
-    return api.sendMessage(siu + "\n\n" + msg  + text, threadID, async (error, info) => {
-      if (autoUnsend) {
-        await new Promise(resolve => setTimeout(resolve, delayUnsend * 1000));
-        return api.unsendMessage(info.messageID);
-      } else return;
-    }, event.messageID);
-  }
-
-  return api.sendMessage(getText("moduleInfo", command.config.name, command.config.description, `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`, command.config.commandCategory, command.config.cooldowns, ((command.config.hasPermssion == 0) ? getText("user") : (command.config.hasPermssion == 1) ? getText("adminGroup") : getText("adminBot")), command.config.credits), threadID, messageID);
+  return api.sendMessage(
+    {
+      body: msg,
+      attachment: fs.createReadStream(imgPath)
+    },
+    threadID,
+    () => fs.unlinkSync(imgPath)
+  );
 };
