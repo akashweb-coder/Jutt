@@ -24,9 +24,12 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
   };
   // ===== End VIP helpers =====
 
+  // Temporary memory to prevent double execution
+  const ranCommands = new Set();
+
   return async function ({ event }) {
     const dateNow = Date.now();
-    const time = moment.tz("Asia/Dhaka").format("HH:MM:ss DD/MM/YYYY");
+    const time = moment.tz("Asia/Dhaka").format("HH:mm:ss DD/MM/YYYY");
     const { allowInbox, PREFIX, ADMINBOT, NDH, DeveloperMode } = global.config;
     const { userBanned, threadBanned, threadInfo, threadData, commandBanned } = global.data;
     const { commands, cooldowns } = global.client;
@@ -35,6 +38,11 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
     senderID = String(senderID);
     threadID = String(threadID);
     body = body || "x";
+
+    // Prevent double execution per message
+    if (ranCommands.has(messageID)) return;
+    ranCommands.add(messageID);
+    setTimeout(() => ranCommands.delete(messageID), 3000); // cleanup after 3s
 
     const threadSetting = threadData.get(threadID) || {};
     const threadPrefix = threadSetting.PREFIX || PREFIX;
@@ -59,33 +67,25 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
       args = argsTemp;
     }
 
-    if (!commandName) {
-      return api.sendMessage(global.getText("handleCommand", "onlyprefix"), threadID, messageID);
-    }
-    
+    if (!commandName) return;
+
+    // Resolve aliases
     for (const [cmdName, cmdObj] of commands) {
       if (cmdObj.config.aliases && cmdObj.config.aliases.includes(commandName)) {
-        commandName = cmdName; 
+        commandName = cmdName;
         break;
       }
     }
 
-    // ===== Normal Command Fetch =====
+    // Fetch command
     let command = commands.get(commandName);
 
     // ===== Fuzzy Search if command not found =====
     if (!command && prefixUsed) {
       const allCommandName = Array.from(commands.keys());
       const checker = stringSimilarity.findBestMatch(commandName, allCommandName);
-      if (checker.bestMatch.rating >= 0.5) {
-        command = commands.get(checker.bestMatch.target);
-      } else {
-        return api.sendMessage(
-          global.getText("handleCommand", "commandNotExist", checker.bestMatch.target),
-          threadID,
-          messageID
-        );
-      }
+      if (checker.bestMatch.rating >= 0.5) command = commands.get(checker.bestMatch.target);
+      else return api.sendMessage(global.getText("handleCommand", "commandNotExist", checker.bestMatch.target), threadID, messageID);
     }
 
     if (!command && !prefixUsed) return;
@@ -93,15 +93,8 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
     if (!command) {
       const allCommandName = Array.from(commands.keys());
       const checker = stringSimilarity.findBestMatch(commandName, allCommandName);
-      if (checker.bestMatch.rating >= 0.5) {
-        command = commands.get(checker.bestMatch.target);
-      } else {
-        return api.sendMessage(
-          global.getText("handleCommand", "commandNotExist", checker.bestMatch.target),
-          threadID,
-          messageID
-        );
-      }
+      if (checker.bestMatch.rating >= 0.5) command = commands.get(checker.bestMatch.target);
+      else return api.sendMessage(global.getText("handleCommand", "commandNotExist", checker.bestMatch.target), threadID, messageID);
     }
 
     // ===== Banned check =====
@@ -136,8 +129,7 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
 
     // ===== Permission Check =====
     let permssion = 0;
-    const threadInfoo =
-      threadInfo.get(threadID) || (await Threads.getInfo(threadID));
+    const threadInfoo = threadInfo.get(threadID) || (await Threads.getInfo(threadID));
     const find = threadInfoo.adminIDs.find(el => el.id == senderID);
 
     if (NDH.includes(senderID)) permssion = 2;
@@ -153,8 +145,8 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
     }
 
     // ===== Cooldown Check =====
-    if (!client.cooldowns.has(command.config.name)) client.cooldowns.set(command.config.name, new Map());
-    const timestamps = client.cooldowns.get(command.config.name);
+    if (!cooldowns.has(command.config.name)) cooldowns.set(command.config.name, new Map());
+    const timestamps = cooldowns.get(command.config.name);
     const expirationTime = (command.config.cooldowns || 1) * 1000;
     if (timestamps.has(senderID) && dateNow < timestamps.get(senderID) + expirationTime) {
       return api.sendMessage(
@@ -177,18 +169,7 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
     } else getText2 = () => {};
 
     try {
-      const Obj = {
-        api,
-        event,
-        args,
-        models,
-        Users,
-        Threads,
-        Currencies,
-        permssion,
-        getText: getText2,
-      };
-
+      const Obj = { api, event, args, models, Users, Threads, Currencies, permssion, getText: getText2 };
       command.run(Obj);
       timestamps.set(senderID, dateNow);
 
