@@ -3,10 +3,10 @@ module.exports.config = {
   version: "1.0.2",
   hasPermssion: 0,
   credits: "ARIF BABU",
-  description: "Shows bot commands page 1",
+  description: "Shows bot commands page by page",
   usePrefix: true,
   commandCategory: "BOT-COMMAND-LIST",
-  usages: "help",
+  usages: "help/help2",
   cooldowns: 5,
   envConfig: {
     autoUnsend: false,
@@ -14,39 +14,39 @@ module.exports.config = {
   }
 };
 
-module.exports.run = async function({ api, event }) {
+module.exports.run = async function({ api, event, args }) {
   const { threadID } = event;
   const prefix = global.config.PREFIX;
   const { autoUnsend, delayUnsend } = global.configModule[this.config.name];
 
-  /* 🖼️ IMGUR LINKS for help.js */
-  const imgurLinks = [
-    "https://i.imgur.com/i1BgQhz.png",
-        "https://i.imgur.com/iTskEvb.png",
-        "https://i.imgur.com/AJkpAle.png",
-        "https://i.imgur.com/i7Ngm0f.png",
-        "https://i.imgur.com/gyxhVCh.png",
-        "https://i.imgur.com/nLh8oLe.png",
-    ];
+  // Hard-coded pages (example: page 1 = help, page 2 = help2)
+  const pages = {
+    1: [
+      "𒁍 help → Show this page",
+      "𒁍 ping → Check bot response",
+      "𒁍 info → Bot info",
+      "𒁍 dp → Profile DP commands"
+    ],
+    2: [
+      "𒁍 kick → Remove member (Admin)",
+      "𒁍 ban → Ban member (Admin)",
+      "𒁍 setprefix → Change bot prefix",
+      "𒁍 clear → Clear messages"
+    ]
+  };
 
-  const randomImg = imgurLinks[Math.floor(Math.random() * imgurLinks.length)];
-
-  const page1Commands = [
-    "𒁍 help → Show this page",
-    "𒁍 ping → Check bot response",
-    "𒁍 info → Bot info",
-    "𒁍 dp → Profile DP commands"
-  ];
+  // Determine which page to show
+  let page = 1;
+  if (this.config.name === "help2") page = 2;
 
   let msg = `┏━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
   msg += `┃ ✧═══❁ ♥️ ARIF-BABU BOT ♥️ ❁═══✧ ┃\n`;
   msg += `┃                            ┃\n`;
-  msg += `┃ 𒁍 Help Page 1             ┃\n`;
+  msg += `┃ 𒁍 Help Page ${page}               ┃\n`;
   msg += `┃                            ┃\n`;
 
-  page1Commands.forEach((cmd) => {
+  pages[page].forEach((cmd, i) => {
     let line = `${cmd}`;
-    if (line.length > 26) line = line.slice(0, 23) + '...';
     msg += `┃ ${line.padEnd(26, ' ')} ┃\n`;
   });
 
@@ -54,10 +54,6 @@ module.exports.run = async function({ api, event }) {
   msg += `┃ Use "${prefix}help [command]" for details ┃\n`;
   msg += `┗━━━━━━━━━━━━━━━━━━━━━━━━┛`;
 
-  const info = await api.sendMessage(
-    { body: msg, attachment: await global.utils.getStreamFromURL(randomImg) },
-    threadID
-  );
-
+  const info = await api.sendMessage(msg, threadID);
   if (autoUnsend) setTimeout(() => api.unsendMessage(info.messageID), delayUnsend * 1000);
 };
