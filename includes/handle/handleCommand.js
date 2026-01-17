@@ -6,35 +6,34 @@ const logger = require("../../utils/log.js");
 const axios = require("axios");
 
 module.exports = function ({ api, models, Users, Threads, Currencies }) {
+
   // ===== VIP helpers =====
   const vipFilePath = path.join(__dirname, "../../modules/commands/rx/vip.json");
   const vipModePath = path.join(__dirname, "../../modules/commands/rx/vipMode.json");
 
   const loadVIP = () => {
     if (!fs.existsSync(vipFilePath)) return [];
-    const data = fs.readFileSync(vipFilePath, "utf-8");
-    return JSON.parse(data);
+    return JSON.parse(fs.readFileSync(vipFilePath, "utf-8"));
   };
 
   const loadVIPMode = () => {
     if (!fs.existsSync(vipModePath)) return false;
-    const data = fs.readFileSync(vipModePath, "utf-8");
-    const parsed = JSON.parse(data);
+    const parsed = JSON.parse(fs.readFileSync(vipModePath, "utf-8"));
     return parsed.vipMode || false;
   };
   // ===== End VIP helpers =====
 
   return async function ({ event }) {
     const dateNow = Date.now();
-    const time = moment.tz("Asia/Dhaka").format("HH:MM:ss DD/MM/YYYY");
-    const { allowInbox, PREFIX, ADMINBOT, NDH, DeveloperMode } = global.config;
-    const { userBanned, threadBanned, threadInfo, threadData, commandBanned } = global.data;
-    const { commands, cooldowns } = global.client;
+    const time = moment.tz("Asia/Dhaka").format("HH:mm:ss DD/MM/YYYY");
+    const { PREFIX, ADMINBOT, NDH, DeveloperMode } = global.config;
+    const { userBanned, threadBanned, threadInfo, threadData } = global.data;
+    const { commands } = global.client;
 
     let { body, senderID, threadID, messageID } = event;
     senderID = String(senderID);
     threadID = String(threadID);
-    body = body || "x";
+    body = body || "";
 
     const threadSetting = threadData.get(threadID) || {};
     const threadPrefix = threadSetting.PREFIX || PREFIX;
@@ -45,139 +44,95 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
     let args = [];
     let commandName = "";
 
+    const isAdmin = ADMINBOT.includes(senderID);
     const prefixUsed = body.startsWith(threadPrefix);
 
-    if (ADMINBOT.includes(senderID) && !prefixUsed) {
-      const temp = body.trim().split(/ +/);
+    // ================== 🚫 DOUBLE RUN FIX ==================
+    if (prefixUsed) {
+      // PREFIX COMMAND (ADMIN + USER)
+      if (!prefixRegex.test(body)) return;
+      const [matchedPrefix] = body.match(prefixRegex);
+      const temp = body.slice(matchedPrefix.length).trim().split(/ +/);
       commandName = temp.shift()?.toLowerCase();
       args = temp;
     } else {
-      if (!prefixRegex.test(body)) return;
-      const [matchedPrefix] = body.match(prefixRegex);
-      const argsTemp = body.slice(matchedPrefix.length).trim().split(/ +/);
-      commandName = argsTemp.shift()?.toLowerCase();
-      args = argsTemp;
+      // NO PREFIX (ONLY ADMIN)
+      if (!isAdmin) return;
+      const temp = body.trim().split(/ +/);
+      commandName = temp.shift()?.toLowerCase();
+      args = temp;
     }
+    // =======================================================
 
-    if (!commandName) {
-      return api.sendMessage(global.getText("handleCommand", "onlyprefix"), threadID, messageID);
-    }
-    
+    if (!commandName) return;
+
+    // ===== Alias Resolve =====
     for (const [cmdName, cmdObj] of commands) {
       if (cmdObj.config.aliases && cmdObj.config.aliases.includes(commandName)) {
-        commandName = cmdName; 
+        commandName = cmdName;
         break;
       }
     }
 
-    // ===== Normal Command Fetch =====
     let command = commands.get(commandName);
 
-    // ===== Fuzzy Search if command not found =====
+    // ===== Fuzzy Search =====
     if (!command && prefixUsed) {
       const allCommandName = Array.from(commands.keys());
       const checker = stringSimilarity.findBestMatch(commandName, allCommandName);
       if (checker.bestMatch.rating >= 0.5) {
         command = commands.get(checker.bestMatch.target);
-      } else {
-        return api.sendMessage(
-          global.getText("handleCommand", "commandNotExist", checker.bestMatch.target),
-          threadID,
-          messageID
-        );
-      }
+      } else return;
     }
 
-    if (!command && !prefixUsed) return;
+    if (!command) return;
 
-    if (!command) {
-      const allCommandName = Array.from(commands.keys());
-      const checker = stringSimilarity.findBestMatch(commandName, allCommandName);
-      if (checker.bestMatch.rating >= 0.5) {
-        command = commands.get(checker.bestMatch.target);
-      } else {
-        return api.sendMessage(
-          global.getText("handleCommand", "commandNotExist", checker.bestMatch.target),
-          threadID,
-          messageID
-        );
-      }
+    // ===== Banned Check =====
+    if ((userBanned.has(senderID) || threadBanned.has(threadID)) && !isAdmin) {
+      return api.sendMessage("❌ You are banned from using commands.", threadID, messageID);
     }
 
-    // ===== Banned check =====
-    if (userBanned.has(senderID) || threadBanned.has(threadID)) {
-      if (!ADMINBOT.includes(senderID)) {
-        const banData = userBanned.has(senderID) ? userBanned.get(senderID) : threadBanned.get(threadID);
-        return api.sendMessage(
-          global.getText(
-            userBanned.has(senderID) ? "handleCommand.userBanned" : "handleCommand.threadBanned",
-            banData.reason,
-            banData.dateAdded
-          ),
-          threadID,
-          async (err, info) => {
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-            return api.unsendMessage(info.messageID);
-          },
-          messageID
-        );
-      }
-    }
-
-    // ===== VIP Mode Check =====
+    // ===== VIP Mode =====
     const vipList = loadVIP();
     const vipMode = loadVIPMode();
 
-    if (!ADMINBOT.includes(senderID)) {
-      if (vipMode && !vipList.includes(senderID)) {
-        return api.sendMessage("> ❌\nOnly VIP users can use this command", threadID, messageID);
-      }
+    if (!isAdmin && vipMode && !vipList.includes(senderID)) {
+      return api.sendMessage("> ❌ Only VIP users can use this command", threadID, messageID);
     }
 
     // ===== Permission Check =====
     let permssion = 0;
-    const threadInfoo =
-      threadInfo.get(threadID) || (await Threads.getInfo(threadID));
-    const find = threadInfoo.adminIDs.find(el => el.id == senderID);
+    const threadInfoo = threadInfo.get(threadID) || await Threads.getInfo(threadID);
+    const isGroupAdmin = threadInfoo.adminIDs.some(e => e.id == senderID);
 
     if (NDH.includes(senderID)) permssion = 2;
-    else if (ADMINBOT.includes(senderID)) permssion = 3;
-    else if (find) permssion = 1;
+    else if (isAdmin) permssion = 3;
+    else if (isGroupAdmin) permssion = 1;
 
     if (command.config.hasPermssion > permssion) {
-      return api.sendMessage(
-        global.getText("handleCommand", "permissionNotEnough", command.config.name),
-        threadID,
-        messageID
-      );
+      return api.sendMessage("❌ Permission denied.", threadID, messageID);
     }
 
-    // ===== Cooldown Check =====
-    if (!client.cooldowns.has(command.config.name)) client.cooldowns.set(command.config.name, new Map());
-    const timestamps = client.cooldowns.get(command.config.name);
-    const expirationTime = (command.config.cooldowns || 1) * 1000;
-    if (timestamps.has(senderID) && dateNow < timestamps.get(senderID) + expirationTime) {
-      return api.sendMessage(
-        `⏱ Please wait ${(timestamps.get(senderID) + expirationTime - dateNow) / 1000} seconds before using ${command.config.name}`,
-        threadID,
-        messageID
-      );
+    // ===== Cooldown =====
+    if (!global.client.cooldowns.has(command.config.name))
+      global.client.cooldowns.set(command.config.name, new Map());
+
+    const timestamps = global.client.cooldowns.get(command.config.name);
+    const cooldown = (command.config.cooldowns || 1) * 1000;
+
+    if (timestamps.has(senderID) && dateNow < timestamps.get(senderID) + cooldown) {
+      return api.sendMessage("⏳ Please wait before using this command.", threadID, messageID);
     }
 
-    // ===== Run Command =====
-    let getText2;
-    if (command.languages && typeof command.languages == "object" && command.languages.hasOwnProperty(global.config.language)) {
-      getText2 = (...values) => {
-        let lang = command.languages[global.config.language][values[0]] || "";
-        for (let i = values.length; i > 0; i--) {
-          lang = lang.replace(new RegExp(`%${i}`, "g"), values[i]);
-        }
-        return lang;
-      };
-    } else getText2 = () => {};
+    // ===== RUN COMMAND (ANTI DOUBLE SHIELD) =====
+    global.client.runningCmd = global.client.runningCmd || new Set();
+    const runKey = `${senderID}_${commandName}`;
+
+    if (global.client.runningCmd.has(runKey)) return;
+    global.client.runningCmd.add(runKey);
 
     try {
-      const Obj = {
+      await command.run({
         api,
         event,
         args,
@@ -185,31 +140,18 @@ module.exports = function ({ api, models, Users, Threads, Currencies }) {
         Users,
         Threads,
         Currencies,
-        permssion,
-        getText: getText2,
-      };
+        permssion
+      });
 
-      command.run(Obj);
       timestamps.set(senderID, dateNow);
 
-      if (DeveloperMode === true)
-        logger(
-          global.getText(
-            "handleCommand",
-            "executeCommand",
-            time,
-            commandName,
-            senderID,
-            threadID,
-            args.join(" "),
-            Date.now() - dateNow
-          ),
-          "[ DEV MODE ]"
-        );
+      if (DeveloperMode)
+        logger(`[CMD] ${commandName} | ${senderID} | ${threadID}`, "[ DEV ]");
 
-      return;
     } catch (e) {
-      return api.sendMessage(global.getText("handleCommand", "commandError", commandName, e), threadID, messageID);
+      api.sendMessage(`❌ Error: ${e.message}`, threadID, messageID);
+    } finally {
+      global.client.runningCmd.delete(runKey);
     }
   };
 };
