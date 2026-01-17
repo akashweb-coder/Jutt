@@ -1,156 +1,134 @@
 module.exports.config = {
-  name: "help2",
-  version: "1.0.4",
-  hasPermssion: 0,
-  credits: "ARIF BABU",
-  description: "Image based help (ALL commands, Y-Style Box)",
-  usePrefix: true,
-  commandCategory: "BOT-COMMAND-LIST",
-  usages: "[category]",
-  cooldowns: 5,
-  dependencies: {
-    "canvas": "",
-    "fs-extra": ""
-  }
+  name: "help2",
+  version: "1.0.3",
+  hasPermssion: 0,
+  credits: "ARIF BABU",
+  description: "THIS BOT IS MR ARIF BABU",
+  usePrefix: true,
+  commandCategory: "system",
+  usages: "[page | command name]",
+  cooldowns: 1,
+  envConfig: {
+    autoUnsend: true,
+    delayUnsend: 300
+  }
 };
 
-module.exports.run = async function ({ api, event, args }) {
-  const { commands } = global.client;
-  const { threadID, messageID } = event;
+module.exports.languages = {
+  en: {
+    moduleInfo:
+      "「 %1 」\n%2\n\n❯ Usage: %3\n❯ Category: %4\n❯ Cooldown: %5 second(s)\n❯ Permission: %6\n\n» Module by %7 «",
+    user: "User",
+    adminGroup: "Admin Group",
+    adminBot: "Admin Bot"
+  }
+};
 
-  const fs = require("fs-extra");
-  const { createCanvas } = require("canvas");
+/* ================= HANDLE EVENT ================= */
 
-  /* ================= CACHE ================= */
-  const cacheDir = __dirname + "/cache";
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+module.exports.handleEvent = function ({ api, event, getText }) {
+  const { body, threadID, messageID } = event;
+  const { commands } = global.client;
 
-  const threadSetting = global.data.threadData.get(threadID) || {};
-  const prefix = threadSetting.PREFIX || global.config.PREFIX;
+  if (!body) return;
+  if (!body.startsWith("help2 ")) return;
 
-  /* ================= CATEGORY MAP (NO FILTER) ================= */
-  const categories = {};
-  for (const [name, cmd] of commands) {
-    let cate = cmd.config.commandCategory;
+  const args = body.split(/\s+/);
+  const cmdName = args[1]?.toLowerCase();
+  if (!commands.has(cmdName)) return;
 
-    if (!cate || typeof cate !== "string") cate = "OTHER";
-    cate = cate.toUpperCase();
+  const command = commands.get(cmdName);
+  const prefix = global.config.PREFIX;
 
-    if (!categories[cate]) categories[cate] = [];
-    categories[cate].push(name);
-  }
+  return api.sendMessage(
+    getText(
+      "moduleInfo",
+      command.config.name,
+      command.config.description,
+      `${prefix}${command.config.name} ${command.config.usages || ""}`,
+      command.config.commandCategory,
+      command.config.cooldowns,
+      command.config.hasPermssion == 0
+        ? getText("user")
+        : command.config.hasPermssion == 1
+        ? getText("adminGroup")
+        : getText("adminBot"),
+      command.config.credits
+    ),
+    threadID,
+    messageID
+  );
+};
 
-  /* ================= CANVAS ================= */
-  const width = 900;
-  const height = 1000;
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
+/* ================= RUN ================= */
 
-  // BACKGROUND
-  ctx.fillStyle = "#0f172a";
-  ctx.fillRect(0, 0, width, height);
+module.exports.run = async function ({ api, event, args, getText }) {
+  const { commands } = global.client;
+  const { threadID, messageID } = event;
 
-  /* ================= HEADER BOX ================= */
-  ctx.strokeStyle = "#38bdf8";
-  ctx.lineWidth = 3;
-  ctx.strokeRect(30, 20, 840, 120);
+  const config =
+    global.configModule?.[this.config.name] || this.config.envConfig;
+  const { autoUnsend, delayUnsend } = config;
 
-  ctx.fillStyle = "#e5e7eb";
-  ctx.font = "bold 30px Arial";
-  ctx.fillText("📜 HELP2 – ALL COMMAND LIST", 220, 70);
+  const prefix = global.config.PREFIX;
 
-  ctx.font = "22px Arial";
-  ctx.fillText(`Prefix: ${prefix}`, 60, 115);
+  const cmd = commands.get((args[0] || "").toLowerCase());
+  if (cmd) {
+    return api.sendMessage(
+      getText(
+        "moduleInfo",
+        cmd.config.name,
+        cmd.config.description,
+        `${prefix}${cmd.config.name} ${cmd.config.usages || ""}`,
+        cmd.config.commandCategory,
+        cmd.config.cooldowns,
+        cmd.config.hasPermssion == 0
+          ? getText("user")
+          : cmd.config.hasPermssion == 1
+          ? getText("adminGroup")
+          : getText("adminBot"),
+        cmd.config.credits
+      ),
+      threadID,
+      messageID
+    );
+  }
 
-  /* ================= MAIN BOX ================= */
-  ctx.strokeStyle = "#22c55e";
-  ctx.lineWidth = 3;
-  ctx.strokeRect(30, 160, 840, 760);
+  /* ===== COMMAND LIST ===== */
 
-  let y = 210;
+  const page = parseInt(args[0]) || 1;
+  const perPage = 20;
 
-  /* ================= SINGLE CATEGORY ================= */
-  if (args[0]) {
-    const cateName = args.join(" ").toUpperCase();
-    const findCate = Object.keys(categories).find(c => c === cateName);
+  const list = [...commands.keys()].sort();
+  const maxPage = Math.ceil(list.length / perPage);
 
-    if (!findCate) {
-      return api.sendMessage(
-        `❌ Category "${args.join(" ")}" nahi mili!\nUse: ${prefix}help2i`,
-        threadID,
-        messageID
-      );
-    }
+  const start = (page - 1) * perPage;
+  const end = start + perPage;
+  const slice = list.slice(start, end);
 
-    ctx.fillStyle = "#38bdf8";
-    ctx.font = "bold 30px Arial";
-    ctx.fillText(`┏━━ CATEGORY: ${findCate} ━━┓`, 60, y);
-    y += 50;
+  let msg = `╭──────── ★ ────────╮
+📄 FULL COMMAND LIST
+╰──────── ★ ────────╯
 
-    ctx.fillStyle = "#f8fafc";
-    ctx.font = "24px Arial";
+┏━━━━━━━━━━━━━━━┓ 
+`; 
 
-    for (const cmd of categories[findCate]) {
-      ctx.fillText(`• ${prefix}${cmd}`, 80, y);
-      y += 34;
-      if (y >= height - 120) break;
-    }
+  slice.forEach((name, index) => {
+    msg += `𒁍 [${start + index + 1}] → ${prefix}${name}\n`;
+  });
 
-    ctx.fillStyle = "#38bdf8";
-    ctx.font = "bold 26px Arial";
-    ctx.fillText("┗━━━━━━━━━━━━━━━━━━━━━━┛", 60, y + 20);
-  }
+  msg +=
+`
+┗━━━━━━━━━━━━━━━┛
 
-  /* ================= ALL CATEGORIES ================= */
-  else {
-    ctx.fillStyle = "#38bdf8";
-    ctx.font = "bold 30px Arial";
-    ctx.fillText("┏━━ CATEGORIES ━━┓", 60, y);
-    y += 50;
+PAGE [ ${page}/${maxPage} ]
+Type: ${prefix}help2 <command name>
+BOT BY MR ARIF BABU 🙂✌️`;
 
-    ctx.fillStyle = "#f8fafc";
-    ctx.font = "26px Arial";
-
-    for (const cate of Object.keys(categories)) {
-      ctx.fillText(
-        `• ${cate} (${categories[cate].length})`,
-        80,
-        y
-      );
-      y += 38;
-      if (y >= height - 140) break;
-    }
-
-    ctx.fillStyle = "#38bdf8";
-    ctx.font = "bold 26px Arial";
-    ctx.fillText("┗━━━━━━━━━━━━━━━━━━━━━━┛", 60, y + 10);
-
-    ctx.fillStyle = "#e5e7eb";
-    ctx.font = "22px Arial";
-    ctx.fillText(
-      `Use: ${prefix}help2i <category>`,
-      80,
-      y + 50
-    );
-  }
-
-  /* ================= FOOTER ================= */
-  ctx.fillStyle = "#a855f7";
-  ctx.font = "20px Arial";
-  ctx.fillText(
-    "BOT BY MR ARIF BABU 💜",
-    300,
-    height - 30
-  );
-
-  /* ================= SAVE & SEND ================= */
-  const path = cacheDir + "/help2.png";
-  fs.writeFileSync(path, canvas.toBuffer());
-
-  return api.sendMessage(
-    { attachment: fs.createReadStream(path) },
-    threadID,
-    () => fs.unlinkSync(path),
-    messageID
-  );
+  return api.sendMessage(msg, threadID, async (err, info) => {
+    if (autoUnsend) {
+      await new Promise(r => setTimeout(r, delayUnsend * 1000));
+      api.unsendMessage(info.messageID);
+    }
+  }, messageID);
 };
