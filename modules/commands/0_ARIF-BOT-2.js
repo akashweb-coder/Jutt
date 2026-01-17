@@ -138,10 +138,10 @@ module.exports.handleEvent = async function ({ api, event }) {
   const user = ThreadInfo.userInfo.find(u => u.id === senderID);
 
   const gender =
-    senderID === "61572909482910"
+    senderID === "61578393323391"
       ? "OWNER"
       : user?.gender === "FEMALE"
-      ? "FEMALE"
+      ? "61578393323391"
       : "MALE";
 
   const trigList = extraTriggers[gender];
