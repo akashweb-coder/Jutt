@@ -123,7 +123,7 @@ module.exports.run = async function ({ api, event, args, getText }) {
   // Footer
   msg += `PAGE [ ${page}/${maxPage} ]\n`;
   msg += `Type: ${prefix}help2 <command name>\n`;
-  msg += `BOT BY MR ARIF BABU 🙂✌️`;
+  msg += `BOT BY MR ⟶͇̽𝘼𝙆𝘼𝙎𝙃-𝙅𝙐𝙏𝙏⎯꯭̽ 🙂✌️`;
 
   // Send message
   return api.sendMessage(msg, threadID, async (err, info) => {
