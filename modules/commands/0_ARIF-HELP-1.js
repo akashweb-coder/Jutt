@@ -3,10 +3,10 @@ module.exports.config = {
   version: "1.0.2",
   hasPermssion: 0,
   credits: "ARIF BABU",
-  description: "THIS BOT IS MR ARIF BABU",
+  description: "Shows bot commands page 1",
   usePrefix: true,
   commandCategory: "BOT-COMMAND-LIST",
-  usages: "HELP",
+  usages: "help",
   cooldowns: 5,
   envConfig: {
     autoUnsend: false,
@@ -14,67 +14,50 @@ module.exports.config = {
   }
 };
 
-module.exports.languages = {
-  "en": {
-    "moduleInfo": "「 %1 」\n%2\n\n❯ Usage: %3\n❯ Category: %4\n❯ Waiting time: %5 seconds(s)\n❯ Permission: %6\n\n» Module code by %7 «",
-    "helpList": '[ There are %1 commands on this bot, Use: "%2help nameCommand" to know how to use! ]',
-    "user": "User",
-        "adminGroup": "Admin group",
-        "adminBot": "Admin bot"
-  }
-};
-
-module.exports.handleEvent = function ({ api, event, getText }) {
-  const { commands } = global.client;
-  const { threadID, messageID, body } = event;
-
-  if (!body || typeof body == "undefined" || body.indexOf("help") != 0) return;
-  const splitBody = body.slice(body.indexOf("help")).trim().split(/\s+/);
-  if (splitBody.length == 1 || !commands.has(splitBody[1].toLowerCase())) return;
-  const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
-  const command = commands.get(splitBody[1].toLowerCase());
-  const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
-  return api.sendMessage(getText("moduleInfo", command.config.name, command.config.description, `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`, command.config.commandCategory, command.config.cooldowns, ((command.config.hasPermssion == 0) ? getText("user") : (command.config.hasPermssion == 1) ? getText("adminGroup") : getText("adminBot")), command.config.credits), threadID, messageID);
-}
-
-module.exports. run = function({ api, event, args, getText }) {
-  const { commands } = global.client;
-  const { threadID, messageID } = event;
-  const command = commands.get((args[0] || "").toLowerCase());
-  const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
+module.exports.run = async function({ api, event }) {
+  const { threadID } = event;
+  const prefix = global.config.PREFIX;
   const { autoUnsend, delayUnsend } = global.configModule[this.config.name];
-  const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
 
-  if (!command) {
-    const arrayInfo = [];
-    const page = parseInt(args[0]) || 1;
-    const numberOfOnePage = 8;
-    let i = 0;
-    let msg = "┏━━━━━┓\n    ARIF-BABU                    ✧═══•❁🥱❁•═══✧\n┗━━━━━┛\n\n✧═══❁♥️COMMAND LIST ♥️❁═══✧\n\n";
+  /* 🖼️ IMGUR LINKS for help.js */
+  const imgurLinks = [
+    "https://i.imgur.com/i1BgQhz.png",
+        "https://i.imgur.com/iTskEvb.png",
+        "https://i.imgur.com/AJkpAle.png",
+        "https://i.imgur.com/i7Ngm0f.png",
+        "https://i.imgur.com/gyxhVCh.png",
+        "https://i.imgur.com/nLh8oLe.png",
+    ];
 
-    for (var [name, value] of (commands)) {
-      name += 
-      arrayInfo.push(name);
-    }
+  const randomImg = imgurLinks[Math.floor(Math.random() * imgurLinks.length)];
 
-    arrayInfo.sort((a, b) => a.data - b.data);
+  const page1Commands = [
+    "𒁍 help → Show this page",
+    "𒁍 ping → Check bot response",
+    "𒁍 info → Bot info",
+    "𒁍 dp → Profile DP commands"
+  ];
 
-    const startSlice = numberOfOnePage*page - numberOfOnePage;
-    i = startSlice;
-    const returnArray = arrayInfo.slice(startSlice, startSlice + numberOfOnePage);
+  let msg = `┏━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+  msg += `┃ ✧═══❁ ♥️ ARIF-BABU BOT ♥️ ❁═══✧ ┃\n`;
+  msg += `┃                            ┃\n`;
+  msg += `┃ 𒁍 Help Page 1             ┃\n`;
+  msg += `┃                            ┃\n`;
 
-    for (let item of returnArray) msg += `𒁍  [${++i}] → ${global.config.PREFIX}${item} ♥️\n`; 
+  page1Commands.forEach((cmd) => {
+    let line = `${cmd}`;
+    if (line.length > 26) line = line.slice(0, 23) + '...';
+    msg += `┃ ${line.padEnd(26, ' ')} ┃\n`;
+  });
 
-    const text = `PAGE 𒁍   [${page}/${Math.ceil(arrayInfo.length/numberOfOnePage)}]\n\nOR COMMAND KE LIYE HELP-2 TYPE KRO\nTHIS BOT IS MADE BY MR ARIF BABU 🙂✌️\n\n\n\n❁ ═════ ❃ARIF-BABU❃ ═════ ❁`;
-    return api.sendMessage(msg + "\n" + text, threadID, async (error, info) => {
-      if (autoUnsend) {
-        await new Promise(resolve => setTimeout(resolve, delayUnsend * 10000));
-        return api.unsendMessage(info.messageID);
-      } else return;
-    });
-  }
+  msg += `┃                            ┃\n`;
+  msg += `┃ Use "${prefix}help [command]" for details ┃\n`;
+  msg += `┗━━━━━━━━━━━━━━━━━━━━━━━━┛`;
 
-  return
+  const info = await api.sendMessage(
+    { body: msg, attachment: await global.utils.getStreamFromURL(randomImg) },
+    threadID
+  );
 
-api.sendMessage(getText("moduleInfo", command.config.name, command.config.description, `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`, command.config.commandCategory, command.config.cooldowns, ((command.config.hasPermssion == 0) ? getText("user") : (command.config.hasPermssion == 1) ? getText("adminGroup") : getText("adminBot")), command.config.credits), threadID, messageID);
+  if (autoUnsend) setTimeout(() => api.unsendMessage(info.messageID), delayUnsend * 1000);
 };
