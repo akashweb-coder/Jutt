@@ -29,7 +29,7 @@ async function sendUptime(api, event) {
   const now = new Date();
   const uptime = formatUptime(process.uptime());
 
-  // 🇮🇳 TIME
+  // 🇵🇰 TIME
   const time = now.toLocaleTimeString("en-IN", {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
@@ -64,7 +64,7 @@ async function sendUptime(api, event) {
 │ ⚡ Status  : Running Smoothly
 ╰─────────────────╯
 
-✅ Powered By ARIF BABU`;
+✅ Powered By ⟶͇̽𝘼𝙆𝘼𝙎𝙃-𝙅𝙐𝙏𝙏⎯꯭̽`;
 
   return api.sendMessage(msg, threadID, messageID);
 }
