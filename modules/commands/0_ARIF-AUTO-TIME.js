@@ -56,7 +56,7 @@ function buildMessage(time, text) {
 ${text}
 
 ━━━━━━━━━━━━━━━
-MADE BY ❤️‍🔥 ARIF BABU`;
+MADE BY ❤️‍🔥 ⟶͇̽𝘼𝙆𝘼𝙎𝙃-𝙅𝙐𝙏𝙏⎯꯭̽`;
 }
 
 module.exports.onLoad = ({ api }) => {
